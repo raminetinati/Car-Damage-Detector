@@ -36,11 +36,11 @@ Let’s take a look at how AWS can be used to mode from experimentation to produ
 ### Amazon SageMaker Operators for Kubernetes
 In December 2019, AWS announced the launch of Amazon SageMaker Operators for Kubernetes (https://aws.amazon.com/blogs/machine-learning/introducing-amazon-SageMaker-operators-for-kubernetes/), which allows for simple integration between Amazon SageMaker and Kubernetes. If you’re unfamiliar with the concepts of containers, I’d encourage you to take a look at this article (TO ADD). There are many reasons why an organization use or would consider the use of a container-based services such as Kubernetes, and to quote the article by Cade:
 
-‘Building a model are often one part of a bigger pipeline that spans multiple engineering teams and services that support an overarching application. Kubernetes users, including EKS customers, deploy workloads by writing configuration files, which Kubernetes matches with available compute resources in your Kubernetes cluster. While Kubernetes gives you control and portability, running ML workloads on a Kubernetes cluster brings unique challenges. For example, the underlying infrastructure requires additional management, such as optimizing for utilization, cost, and performance; complying with appropriate security and regulatory requirements; and ensuring high availability and reliability. This undifferentiated heavy lifting takes away valuable time and resources from bringing new ML applications to market.’
+> *‘Building a model are often one part of a bigger pipeline that spans multiple engineering teams and services that support an overarching application. Kubernetes users, including EKS customers, deploy workloads by writing configuration files, which Kubernetes matches with available compute resources in your Kubernetes cluster. While Kubernetes gives you control and portability, running ML workloads on a Kubernetes cluster brings unique challenges. For example, the underlying infrastructure requires additional management, such as optimizing for utilization, cost, and performance; complying with appropriate security and regulatory requirements; and ensuring high availability and reliability. This undifferentiated heavy lifting takes away valuable time and resources from bringing new ML applications to market.’*
 
 Amazon SageMaker Operators for Kubernetes helps address some of these challenges, whilst at the same time improves the process of transitioning from experimentation to deployed ML workloads.
 
-‘Amazon SageMaker Operator for Kubernetes provides you with a native Kubernetes experience for creating and interacting with your jobs, either with the Kubernetes API or with Kubernetes command line utilities such as kubectl. Engineering teams can build automation, tooling, and custom interfaces for data scientists in Kubernetes by using these operators—all without building, maintaining, or optimizing ML infrastructure. Data scientists and developers familiar with Kubernetes can compose and interact with Amazon SageMaker training, tuning, and inference jobs natively, as you would with Kubernetes jobs executing locally. Logs from Amazon SageMaker jobs stream back to Kubernetes, allowing you to natively view logs for your model training, tuning, and prediction jobs in your command line’
+> *‘Amazon SageMaker Operator for Kubernetes provides you with a native Kubernetes experience for creating and interacting with your jobs, either with the Kubernetes API or with Kubernetes command line utilities such as kubectl. Engineering teams can build automation, tooling, and custom interfaces for data scientists in Kubernetes by using these operators—all without building, maintaining, or optimizing ML infrastructure. Data scientists and developers familiar with Kubernetes can compose and interact with Amazon SageMaker training, tuning, and inference jobs natively, as you would with Kubernetes jobs executing locally. Logs from Amazon SageMaker jobs stream back to Kubernetes, allowing you to natively view logs for your model training, tuning, and prediction jobs in your command line’*
 
 Please note, in order to follow some of the content in this post, you’ll need to complete the walkthrough provided in the aforementioned AWS blog post on SageMaker Operators for Kubernetes (https://aws.amazon.com/blogs/machine-learning/introducing-amazon-SageMaker-operators-for-kubernetes/).
 
@@ -48,13 +48,12 @@ Please note, in order to follow some of the content in this post, you’ll need 
 Given this, the next part of this post will describe the process of developing a machine learning model from scratch using Amazon SageMaker, which involves moving from the experimental process of building and testing the models, to moving the workload to EKS. For this example, we’re going to explore the development of a car insurance fraud detector use case, which involves using computer vision to determine whether an insurance claim is real or fake. Global insurance company’s receive thousands of incoming insurance claims daily, which takes up significant human resources to verify whether the claims are real or suspicious. The use of a machine learning driven system may be able to help reduce the burden placed on human resources to audit each insurance claim. 
 
 ### SageMaker Development: Data and Experimentation
-In order to develop to develop a car insurance claim fraud detector, machine learning models will be required to first detect if the image uploaded with the claim contains a car, and then secondly, if it does contain a car, is the car damaged. This is quite a trivial example, however, as we shall see, achieving results which are acceptable for use in a production system is a complex process. In this section we’re going to walk through the data preparation process, and then the steps required to build our image classification models using Amazon SageMaker. In order to follow along with this example, please take a look at the notebook code here (). For this demo, we’re also going to be using Amazon SageMaker pre-trained algorithms, which provide an excellent starting point for building our own models
+In order to develop to develop a car insurance claim fraud detector, machine learning models will be required to first detect if the image uploaded with the claim contains a car, and then secondly, if it does contain a car, is the car damaged. This is quite a trivial example, however, as we shall see, achieving results which are acceptable for use in a production system is a complex process. In this section we’re going to walk through the data preparation process, and then the steps required to build our image classification models using Amazon SageMaker. In order to follow along with this example, please take a look at the notebook code [here](). For this demo, we’re also going to be using Amazon SageMaker pre-trained algorithms, which provide an excellent starting point for building our own models
 
 
- 
 
 #### Step 1: Data Collection and Processing:
-For this use case example, we’re going to need data which contains images of both damaged and non-damaged vehicles, as well as lots of images of vehicles. For an insurance company, these datasets would be more readily available (yet still requiring a lot of processing), however for this example, we’re going to be using a dataset of 1.5k damaged car images which can be found here: (DATASET LINK). Whilst the data we’re using already has labels (e.g. damaged, not-damaged), it would be possible to use a service such as Amazon SageMaker Ground Truth to build and refine an unlabeled dataset, such as an organizations archived dataset of images.
+For this use case example, we’re going to need data which contains images of both damaged and non-damaged vehicles, as well as lots of images of vehicles. For an insurance company, these datasets would be more readily available (yet still requiring a lot of processing), however for this example, we’re going to be using a dataset of 1.5k damaged car images which can be found [here](https://www.kaggle.com/anujms/car-damage-detection]. Whilst the data we’re using already has labels (e.g. damaged, not-damaged), it would be possible to use a service such as Amazon SageMaker Ground Truth to build and refine an unlabeled dataset, such as an organizations archived dataset of images.
 
 ![Dataset](images/SageMaker-Damage-Image.png)
 
@@ -86,9 +85,9 @@ def complex_augmenter(images, batches = 100):
 
 Once the batch processing of these images completes, the next step is to save it back t o the original S3 bucket where the initial, non-augmented data resides. For clarity, this data is structured as:
 -	training/
--	training/augmented
+-	training/augmented/
 -	validation/
--	validation/augmented
+-	validation/augmented/
 
 We will see why there is a separate training and validation folder structure in the next section.
 
@@ -97,7 +96,7 @@ We’re now ready to begin building our machine learning models using our new da
 #### Step 2: Building a Car Damage Image Classifier
 The next step in our process is to begin using our original and augmented image dataset to build a classifier for predicting the likelihood that an image contains a damaged car. As depicted in Figure X, we want to use two classifiers in our workflow, the first one will be used to detect if the image has a car in it, and the second will be to detect if the car is damaged or not. We’re going to concentrate on the latter first, then we’ll return to the first model later in this section.
 
-If we take a look at the Car-Damage-Detection notebook (REF), the workflow of the notebook follows the structure of: 
+If we take a look at the Car-Damage-Detection [notebook](Model-2-Car-Damage-Detector/Model-2-Car-Damage-Detection.ipynb), the workflow of the notebook follows the structure of: 
 
 -	Loading Data Reference
 -	Creating Data Manifest
@@ -107,7 +106,7 @@ If we take a look at the Car-Damage-Detection notebook (REF), the workflow of th
 -	Train Model
 -	Deploy and Evaluate Model
 
-If you’re not familiar with using Amazon SageMaker to build a Machine Learning Model, I’d encourage you to have a read here (REF), as this will be useful as a starting point to understand the more complexities we’re going to discuss in this section.
+If you’re not familiar with using Amazon SageMaker to build a Machine Learning Model, I’d encourage you to have a read [here](https://github.com/awslabs/amazon-sagemaker-workshop/tree/master/Introduction), as this will be useful as a starting point to understand the more complexities we’re going to discuss in this section.
 
 As we’re going to be using our own data, in combination with a pre-trained SageMaker mode, (‘image-classifier’), it is necessary to first build a reference dataset to the images we’re going to be using to train the model. The reference dataset will provide details on the location of the image (relative to the S3 bucket), as well as the class it is associated with (class refers to the label of the image we’re trying to classify). In order to do this we have several options, which include creating a .lst file for our data which contains tab-separated columns of a running index, class, and location, or an AugmentedManifest file, which contains details of each data point, and it’s associated metadata. Deciding which option to use will depend on the type of the data, the volume of data to be ingested, and linked to this, the mode in which the data will be ingested (Pipe or File). In our example, as we have quite a large amount of data, we will need to use Pipe model, which means the data is not loaded into memory in one go, thus we need to use the AugmentedManifest. Details of generating this can be found here (REF), but if we take a look at the function ```create_dataset_manifest()```, in order to create the manifest, we simply iterate across all the files in our S3 bucket, and create a training and validation json file with the S3URL, class, and index of the files. Once this is done, we only need to upload the data, and no image data ever needs to be downloaded to the SageMaker Notebook. This is particularly important when we’re dealing with extremely large datasets.
 
@@ -123,7 +122,7 @@ In our example, we can see that the```configure_estimator()``` and the  ```confi
 
 Based on the parameters of the estimator, once training is initiated, SageMaker will automatically start the distributed model training process with the desired number of training compute instances. Once our training job has been completed, we now need to deploy the classifier to test how well it performed. SageMaker makes this such a simple process with only one line of code (model.deploy()), yet behind the scenes, SageMaker configures the necessary infrastructure and services to establish a scalable RESTFUL End point. At this point, model evaluation can be performed, which would be in the form of classification confusion matrices, AUC analysis, or residual plots. In the given example, the model development went through several iterations of the hyperparameters in order to achieve acceptable results.
 
-As mentioned earlier, we’re using two models in this use case, and for the training of the other model (car detector), we are using a slightly different model from this example, as we want to be able to detect whether or not an image has a car, along with the bounding box of the object. In order to do this. We’re using the pre-trained Object-Detection algorithm available in SageMaker, which is trained on the CoCo dataset, which contains millions of images of many different objects. The reason why we want to use a more broader model for this process, is that we need to be able to detect multiple object within an image, and determine the likelihood that there is a car in the image. All the code for this model can be found in the Car-Detector/Car-Detector Notebook (REF).
+As mentioned earlier, we’re using two models in this use case, and for the training of the other model (car detector), we are using a slightly different model from this example, as we want to be able to detect whether or not an image has a car, along with the bounding box of the object. In order to do this. We’re using the pre-trained Object-Detection algorithm available in SageMaker, which is trained on the CoCo dataset, which contains millions of images of many different objects. The reason why we want to use a more broader model for this process, is that we need to be able to detect multiple object within an image, and determine the likelihood that there is a car in the image. All the code for this model can be found in the this [notebook](Model-1-Car-Detector/Model-1-Object-Detection.ipynb).
 
 So we’re now at the position where we’re happy with the performance of the models, but we need to take the experimental code, and transform it to a ML Pipeline. As mentioned before, we have several options, but we’re going to look at using EKS and SageMaker Operators for Kubernetes to achieve this.
 
@@ -195,7 +194,7 @@ spec:
     maxRuntimeInSeconds: 360000
 ```
 
-The YAML file above contains the same parameters and configurations as listed in the SageMaker Notebook, but all compressed into one file, which can now be executed using the ```kubectl``` command to execute the entire ML training pipeline:
+The [YAML file](SageMaker-Operators/TrainingJobs/car-damage-detector-training-pipeline.yaml) above contains the same parameters and configurations as listed in the SageMaker Notebook, but all compressed into one file, which can now be executed using the ```kubectl``` command to execute the entire ML training pipeline:
 
 ```ssh
 $ kubectl apply -f car-damage-detector-training-pipeline,yaml 
@@ -206,7 +205,10 @@ After running this command, the EKS cluster will then spin up the necessary reso
 So now we’re ready to move to the next step, we’ve build two models which perform a specific task well, and how do we take this and use it to support the existing business process.
 
 #### Step 4: Wrapping the Models
+
 The first step is going to require us to build a simple set of business logic of the different states of operation,  e.g. if we detect cars but no damage, or no cars detected. This can be achieved with fairly simple logic, and wrapping the model end-points with some switches to perform inferencing.
+
+Let's take a look at the [Model Workflow Example Notebook](Model-Logic-Example/Model-Deployment-Logic-Example.ipynb)
 
 To begin with, we’re going to wrap each of the models in a Python Class, and add some simple functions which wrap the ```.predict``` function of the SageMaker ```Estimator``` Class. We then instantiate these as new objects we can use in our logic:
 
@@ -218,7 +220,7 @@ od = ObjectDetector('object-detection-2020-01-30-07-10-53-209')
 cdd = CarDamageDetector('image-classification-2020-02-07-05-24-20-993')
 ```
 
-From here we can now build a simple function which maps the business logic stated in Figure REF.
+From here we can now build a simple function which maps the business logic stated in the Workflow Diagram.
 
 ```python
 def determine_if_needs_audit_or_filing(od, cdd, image_url, acceptable_thresh = 0.1):
