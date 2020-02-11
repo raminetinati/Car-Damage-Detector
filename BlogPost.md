@@ -8,12 +8,15 @@ In this post we’re going to explore the topic of operationalizing machine lear
 
 If you’re an avid fan of Kubernetes and Amazon SageMaker for developing and deploying your machine learning models, then this blog post will hopefully provide you some useful guidance and ideas to use in your own organization. 
 
-Background: Operationalizing Machine Learning Workloads
+
+## Background: Operationalizing Machine Learning Workloads
 The use of machine learning has become a core pillar of many organizations and industries; agriculture, automotive, healthcare, finance, oil and gas, government, retail, they all are using different forms of machine learning models to complement, enhance, and innovate their existing lines of business. Typical machine learning tasks can include use cases such as financial forecasting, customer churn and propensity modelling, classification tasks such as predicting whether a mechanical part will fail or an email is spam, to more complex tasks such as object recognition, natural language processing (chat bots), and even models to support autonomous driving (Reinforcement Learning)
 
 If we take a step back, for many of the examples above, obtaining, storing, cleaning, and structuring the data is an essential initial (and ongoing) step to building any useful machine learning model. This in itself is an expensive exercise and requires significant human and computational resources, and it’s important to recognize that before any machine learning workloads or worthwhile experimentations can really be achieved, an organizations’ data capabilities really need to be in-place. 
 
 However, what happens when an organization is in the position to begin their machine learning journey, and how do they go from data science experiments to operationalized solutions, with the least amount of disruption. The key here is to being able to move quickly between experimentation environments, to general purposes architectures, such as Kubernetes, which is a common environment for many AWS customers.
+
+![Overview](images/SageMaker_Operators_EKS_Blog.png)
 
 ## Experimentation First
 Let’s switch gears for a minute and think about the first stage in this process. Assume that we’ve got some great data sources, and we’re ready to develop a machine learning process to complement (and many in the future, replace) an existing business process. The first step in this process (beyond the business and organizational consultation and approvals), will be to an some initial hypothesis which effectively state what we’re trying to prove (or disprove). As the focus of this post is to talk about the path to production, we will only focus on the processes at a high-level, it’s important (and sometimes a forgotten element) step to enforce: a hypothesis drives and sets the scope of every data science experiment. 
@@ -53,7 +56,8 @@ In order to develop to develop a car insurance claim fraud detector, machine lea
 #### Step 1: Data Collection and Processing:
 For this use case example, we’re going to need data which contains images of both damaged and non-damaged vehicles, as well as lots of images of vehicles. For an insurance company, these datasets would be more readily available (yet still requiring a lot of processing), however for this example, we’re going to be using a dataset of 1.5k damaged car images which can be found here: (DATASET LINK). Whilst the data we’re using already has labels (e.g. damaged, not-damaged), it would be possible to use a service such as Amazon SageMaker Ground Truth to build and refine an unlabeled dataset, such as an organizations archived dataset of images.
 
-  
+![Dataset](images/SageMaker-Damage-Image.png)
+
 
 If we take a look at the dataset the images above, they depict damage to a car, or images or a car without any damages. Some images contain the whole car, some contain just the car select component of a car (e.g. door, fender). As with most successful machine learning models, a richer, bigger dataset is always advantageous; If the model can learn from more data points, the model will have a better chance of building a function which can predict more actually on data it hasn’t seen before. Although our data is only 1.5k images, we’re going to use some data augmentation techniques to perform a series of transformations of our data to generate more versions of a given image. These transformations may involve skewing, rotating, adding blur, masking, or adding layers. In order to complete our data augmentation tasks, we use the ```imgaug``` library, which provides a selection of transformation approaches, as well as parallel batch processing of operations.
 
@@ -66,7 +70,8 @@ rotate = iaa.Affine(rotate=(-125, 125))
 image_aug = rotate.augment_image(image)
 ```
   
- 
+![Augmented](images/SageMaker-Augmented.png)
+
 
 If we take a look at the data preparation notebook, there is a ```complex_augmenter``` function in which we can load in our source images, and generate a number of batches for each of the images:
 
@@ -243,6 +248,9 @@ def determine_if_needs_audit_or_filing(od, cdd, image_url, acceptable_thresh = 0
 ```
 
 We now have a function which can take an image URL, and use both models to determine whether the image contains a car, and if so, does the car contain damages! This code then could be used inside a AWS Lambda function, and called every time a new Insurance Claim is submitted, and the results appended to the claim case, for example.
+
+![Workflow](images/Sagemaker-Workflow-Example.png)
+
 
 ## Summary
 Hopefully, through this trivial example, you’ve seen that moving from experimentation to operationalized machine learning workflows can be achieved simply using Amazon SageMaker and Amazon EKS. In the example we’ve seen how the data science experimentations can then be transferred over to Kubernetes using Amazon SageMaker Operators for EKS, and how this allows for more simpler management of a reoccurring training job. However, this is only one part of the overall ML pipeline (not all could be covered in one post!), other workloads such as data Transformations and model deployment can also be performed using SageMaker Operators.
