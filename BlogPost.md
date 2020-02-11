@@ -54,7 +54,7 @@ In order to develop to develop a car insurance claim fraud detector, machine lea
 
 
 #### Step 1: Data Collection and Processing:
-For this use case example, we’re going to need data which contains images of both damaged and non-damaged vehicles, as well as lots of images of vehicles. For an insurance company, these datasets would be more readily available (yet still requiring a lot of processing), however for this example, we’re going to be using a dataset of 1.5k damaged car images which can be found [here](https://www.kaggle.com/anujms/car-damage-detection]. Whilst the data we’re using already has labels (e.g. damaged, not-damaged), it would be possible to use a service such as Amazon SageMaker Ground Truth to build and refine an unlabeled dataset, such as an organizations archived dataset of images.
+For this use case example, we’re going to need data which contains images of both damaged and non-damaged vehicles, as well as lots of images of vehicles. For an insurance company, these datasets would be more readily available (yet still requiring a lot of processing), however for this example, we’re going to be using a dataset of 1.5k damaged car images which can be found [here](https://www.kaggle.com/anujms/car-damage-detection). Whilst the data we’re using already has labels (e.g. damaged, not-damaged), it would be possible to use a service such as Amazon SageMaker Ground Truth to build and refine an unlabeled dataset, such as an organizations archived dataset of images.
 
 ![Dataset](images/SageMaker-Damage-Image.png)
 
