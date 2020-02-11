@@ -2,6 +2,7 @@
 
 
 ## Overview
+
 As machine learning becomes more pervasive and a staple part of an organization’s production workloads, its important to be able to develop and manage scalable architectures and pipelines. If you’re a Machine Learning Practitioner, Data Scientist, Solution Architect, or have had any experience in operationalizing advanced workloads, then you’re probably aware of the technical (as well as business) challenges faced.
 
 In this post we’re going to explore the topic of operationalizing machine learning workloads; moving away from the initial experimentation, testing and evaluation process, to a production ready environment. We’ll focus specifically on how do you move from the data science notebook environment (e.g. Jupyter Notebooks), to a container-based environment where workloads can be deployed and managed in an automated fashion.
@@ -27,9 +28,9 @@ As the data science experimentation begins, there will most likely be an iterati
 Unless an organization’s data science practice is extremely mature and have established data science processes, the code developed to build these models will most likely reside in data science notebooks, and resemble a series of executable code fragments which perform different tasks such as data transformations, renaming columns, etc. These can become quite messy code bases to work from, especially when revisiting them and executing them after some time has passed (we’ll get to this). Knowing which code fragments to run can be a challenge, especially without extensive documentation or consulting members from the original data science tea. Unfortunately, as we’ve seen, this is a real scenario; the process of model training is not a one-off activity; model training and re-training is an ongoing exercise for the lifetime for the operational lifetime of a model. As new data is available, or as the prediction accuracy of a model starts to drift, then re-training is required. 
 
 At this point, an organization have several options to transform experimental data science notebook code into a form which can be operationalized: 
--	Rewriting the code into a structure which can be executed in a more intuitive and meaningful way. This may involve requiring the help of production engineers or developers. As part of this, the team will need to think about how the solution can be integrated with the existing infrastructure and architecture, including connectivity to data sources, compute resources, etc.
--	A lighter approach would be to clean up the code in the notebooks, and set scheduled tasks to execute the code when required (e.g. Weekly batch process). A downside to this approach is that if further experimentation is required (e.g. new features, different model parameters), the scheduled tasks and cleaned up notebooks may need to be constantly re-engineered to accommodate experimentation, this run the risk of having multiple versions notebooks of running in parallel, and lead to heavy code management overheads.
--	An alternative approach would be to take advantage of the interoperability between notebook environments which offer the same functionality in more commonly used container based environments, such as Amazon Kubernetes Service and Amazon SageMaker, to easily transition from experiment to production. 
+    - Rewriting the code into a structure which can be executed in a more intuitive and meaningful way. This may involve requiring the help of production engineers or developers. As part of this, the team will need to think about how the solution can be integrated with the existing infrastructure and architecture, including connectivity to data sources, compute resources, etc.
+    - A lighter approach would be to clean up the code in the notebooks, and set scheduled tasks to execute the code when required (e.g. Weekly batch process). A downside to this approach is that if further experimentation is required (e.g. new features, different model parameters), the scheduled tasks and cleaned up notebooks may need to be constantly re-engineered to accommodate experimentation, this run the risk of having multiple versions notebooks of running in parallel, and lead to heavy code management overheads.
+    - An alternative approach would be to take advantage of the interoperability between notebook environments which offer the same functionality in more commonly used container based environments, such as Amazon Kubernetes Service and Amazon SageMaker, to easily transition from experiment to production. 
 
 Let’s take a look at how AWS can be used to mode from experimentation to production in a containerized environment by using the recently released Amazon SageMaker Operators.
  
@@ -48,7 +49,7 @@ Please note, in order to follow some of the content in this post, you’ll need 
 Given this, the next part of this post will describe the process of developing a machine learning model from scratch using Amazon SageMaker, which involves moving from the experimental process of building and testing the models, to moving the workload to EKS. For this example, we’re going to explore the development of a car insurance fraud detector use case, which involves using computer vision to determine whether an insurance claim is real or fake. Global insurance company’s receive thousands of incoming insurance claims daily, which takes up significant human resources to verify whether the claims are real or suspicious. The use of a machine learning driven system may be able to help reduce the burden placed on human resources to audit each insurance claim. 
 
 ### SageMaker Development: Data and Experimentation
-In order to develop to develop a car insurance claim fraud detector, machine learning models will be required to first detect if the image uploaded with the claim contains a car, and then secondly, if it does contain a car, is the car damaged. This is quite a trivial example, however, as we shall see, achieving results which are acceptable for use in a production system is a complex process. In this section we’re going to walk through the data preparation process, and then the steps required to build our image classification models using Amazon SageMaker. In order to follow along with this example, please take a look at the notebook code [here](). For this demo, we’re also going to be using Amazon SageMaker pre-trained algorithms, which provide an excellent starting point for building our own models
+In order to develop to develop a car insurance claim fraud detector, machine learning models will be required to first detect if the image uploaded with the claim contains a car, and then secondly, if it does contain a car, is the car damaged. This is quite a trivial example, however, as we shall see, achieving results which are acceptable for use in a production system is a complex process. In this section we’re going to walk through the data preparation process, and then the steps required to build our image classification models using Amazon SageMaker. In order to follow along with this example, please take a look at the notebook code [here](Data-Preparation/Data%20Preparation%20-%20Car%20Damage%20Data.ipynb). For this demo, we’re also going to be using Amazon SageMaker pre-trained algorithms, which provide an excellent starting point for building our own models
 
 
 
@@ -84,10 +85,10 @@ def complex_augmenter(images, batches = 100):
 ```
 
 Once the batch processing of these images completes, the next step is to save it back t o the original S3 bucket where the initial, non-augmented data resides. For clarity, this data is structured as:
--	training/
--	training/augmented/
--	validation/
--	validation/augmented/
+ - training/
+ - training/augmented/
+ - validation/
+ - validation/augmented/
 
 We will see why there is a separate training and validation folder structure in the next section.
 
