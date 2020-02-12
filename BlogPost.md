@@ -158,9 +158,11 @@ def configure_estimator(bucket_name, sess, training_image):
                                              output_path=s3_output_location,
                                              sagemaker_session=sess)
     return ic
-    
-    
-    
+```   
+
+When configuring the estimator, as we're using a large dataset to perform transfer learing with an exiting model, we set ```input_mode``` to ```Pipe```, and also specify the instance count and type. If the ```train_instance_count``` is greater than 1, the model training will automatically be distributed across nodes. Finally, we need to set the output location of the model once training has been completed. In practice this path should be revisioned in order to allow for multiple models to be saved, without overriding existing outputs.
+
+```python    
 def configure_hyperparams(ic):
     ic.set_hyperparameters(num_layers=18,
                              use_pretrained_model=1,
@@ -170,13 +172,14 @@ def configure_hyperparams(ic):
                              epochs=100,
                              learning_rate=0.001,
                              top_k=1,
-                             num_training_samples=105434,
+                             num_training_samples=len(manifest_val),
                              precision_dtype='float32')
     
     return ic
 
 ```
 
+In the given example, the hyperparameters have been set to reflect the data being used for training, e.g. the ```image_shape``` parameter has been set to 3 channels (R,G,B), of size 150 pixel (h) x 250 pixels (w). More details of the specific hyperparameters can be found in the notebook, but it's important to remmeber that manually configuring these requires the analysis of the training logs to determine how the model is performing.
 
 
 Based on the parameters of the estimator, once training is initiated, SageMaker will automatically start the distributed model training process with the desired number of training compute instances. Once our training job has been completed, we now need to deploy the classifier to test how well it performed. SageMaker makes this such a simple process with only one line of code (model.deploy()), yet behind the scenes, SageMaker configures the necessary infrastructure and services to establish a scalable RESTFUL End point. At this point, model evaluation can be performed, which would be in the form of classification confusion matrices, AUC analysis, or residual plots. In the given example, the model development went through several iterations of the hyperparameters in order to achieve acceptable results.
@@ -260,6 +263,27 @@ $ kubectl apply -f car-damage-detector-training-pipeline,yaml
 ```
 
 After running this command, the EKS cluster will then spin up the necessary resources to support the workload and run the TrainingJob as configured.
+
+In order to examine the logs of the training job, the following command can be executed:
+
+```ssh
+$ kubectl smlogs trainingjob car-damage-detector 
+```
+
+Which will result in a console output similar to the following, whicb reflects the metrics being used to measure the performance of the model against the training and validation data.
+
+```ssh
+car-damage-detector-4b1a19444bd011eab0ef0e980407102b/algo-1-1581317035 2020-02-10 07:09:20.215 +0000 UTC [02/10/2020 07:09:19 INFO 140575449093952] Epoch[7] Batch [820]#011Speed: 204.183 samples/sec#011accuracy=1.000000
+car-damage-detector-4b1a19444bd011eab0ef0e980407102b/algo-1-1581317035 2020-02-10 07:09:20.216 +0000 UTC [02/10/2020 07:09:19 INFO 140575449093952] Epoch[7] Train-accuracy=1.000000
+car-damage-detector-4b1a19444bd011eab0ef0e980407102b/algo-1-1581317035 2020-02-10 07:09:20.216 +0000 UTC [02/10/2020 07:09:19 INFO 140575449093952] Epoch[7] Time cost=128.797
+car-damage-detector-4b1a19444bd011eab0ef0e980407102b/algo-4-1581317036 2020-02-10 07:09:20.592 +0000 UTC [02/10/2020 07:09:19 INFO 139941932451648] Epoch[7] Train-accuracy=1.000000
+car-damage-detector-4b1a19444bd011eab0ef0e980407102b/algo-4-1581317036 2020-02-10 07:09:20.592 +0000 UTC [02/10/2020 07:09:19 INFO 139941932451648] Epoch[7] Time cost=128.827
+car-damage-detector-4b1a19444bd011eab0ef0e980407102b/algo-3-1581317035 2020-02-10 07:09:20.594 +0000 UTC [02/10/2020 07:09:19 INFO 140050476062528] Epoch[7] Train-accuracy=1.000000
+car-damage-detector-4b1a19444bd011eab0ef0e980407102b/algo-3-1581317035 2020-02-10 07:09:20.594 +0000 UTC [02/10/2020 07:09:19 INFO 140050476062528] Epoch[7] Time cost=128.801
+car-damage-detector-4b1a19444bd011eab0ef0e980407102b/algo-3-1581317035 2020-02-10 07:10:06.61 +0000 UTC [02/10/2020 07:10:06 INFO 140050476062528] Epoch[7] Validation-accuracy=0.880992
+car-damage-detector-4b1a19444bd011eab0ef0e980407102b/algo-1-1581317035 2020-02-10 07:10:12.234 +0000 UTC [02/10/2020 07:10:11 INFO 140575449093952] Epoch[7] Validation-accuracy=0.880992
+car-damage-detector-4b1a19444bd011eab0ef0e980407102b/algo-4-1581317036 2020-02-10 07:10:13.611 +0000 UTC [02/10/2020 07:10:13 INFO 139941932451648] Epoch[7] Validation-accuracy=0.880992
+```
 
 So now we’re ready to move to the next step, we’ve build two models which perform a specific task well, and how do we take this and use it to support the existing business process.
 
