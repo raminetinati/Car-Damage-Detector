@@ -35,7 +35,7 @@ At this point, an organization have several options to transform experimental da
 Let’s take a look at how AWS can be used to mode from experimentation to production in a containerized environment by using the recently released Amazon SageMaker Operators.
  
 ### Amazon SageMaker Operators for Kubernetes
-In December 2019, AWS announced the launch of Amazon SageMaker Operators for Kubernetes (https://aws.amazon.com/blogs/machine-learning/introducing-amazon-SageMaker-operators-for-kubernetes/), which allows for simple integration between Amazon SageMaker and Kubernetes. If you’re unfamiliar with the concepts of containers, I’d encourage you to take a look at this article (TO ADD). There are many reasons why an organization use or would consider the use of a container-based services such as Kubernetes, and to quote the article by Cade:
+In December 2019, AWS announced the launch of [Amazon SageMaker Operators for Kubernetes](https://aws.amazon.com/blogs/machine-learning/introducing-amazon-SageMaker-operators-for-kubernetes/), which allows for simple integration between Amazon SageMaker and Kubernetes. If you’re unfamiliar with the concepts of containers, I’d encourage you to take a look at this article (TO ADD). There are many reasons why an organization use or would consider the use of a container-based services such as Kubernetes, and to quote the article by Cade:
 
 > *‘Building a model are often one part of a bigger pipeline that spans multiple engineering teams and services that support an overarching application. Kubernetes users, including EKS customers, deploy workloads by writing configuration files, which Kubernetes matches with available compute resources in your Kubernetes cluster. While Kubernetes gives you control and portability, running ML workloads on a Kubernetes cluster brings unique challenges. For example, the underlying infrastructure requires additional management, such as optimizing for utilization, cost, and performance; complying with appropriate security and regulatory requirements; and ensuring high availability and reliability. This undifferentiated heavy lifting takes away valuable time and resources from bringing new ML applications to market.’*
 
@@ -43,7 +43,7 @@ Amazon SageMaker Operators for Kubernetes helps address some of these challenges
 
 > *‘Amazon SageMaker Operator for Kubernetes provides you with a native Kubernetes experience for creating and interacting with your jobs, either with the Kubernetes API or with Kubernetes command line utilities such as kubectl. Engineering teams can build automation, tooling, and custom interfaces for data scientists in Kubernetes by using these operators—all without building, maintaining, or optimizing ML infrastructure. Data scientists and developers familiar with Kubernetes can compose and interact with Amazon SageMaker training, tuning, and inference jobs natively, as you would with Kubernetes jobs executing locally. Logs from Amazon SageMaker jobs stream back to Kubernetes, allowing you to natively view logs for your model training, tuning, and prediction jobs in your command line’*
 
-Please note, in order to follow some of the content in this post, you’ll need to complete the walkthrough provided in the aforementioned AWS blog post on SageMaker Operators for Kubernetes (https://aws.amazon.com/blogs/machine-learning/introducing-amazon-SageMaker-operators-for-kubernetes/).
+Please note, in order to follow some of the content in this post, you’ll need to complete the walkthrough provided in the aforementioned AWS blog post on [Amazon SageMaker Operators for Kubernetes](https://aws.amazon.com/blogs/machine-learning/introducing-amazon-SageMaker-operators-for-kubernetes/).
 
 ## Practical Example: Car Insurance Fraud Detection 
 Given this, the next part of this post will describe the process of developing a machine learning model from scratch using Amazon SageMaker, which involves moving from the experimental process of building and testing the models, to moving the workload to EKS. For this example, we’re going to explore the development of a car insurance fraud detector use case, which involves using computer vision to determine whether an insurance claim is real or fake. Global insurance company’s receive thousands of incoming insurance claims daily, which takes up significant human resources to verify whether the claims are real or suspicious. The use of a machine learning driven system may be able to help reduce the burden placed on human resources to audit each insurance claim. 
@@ -77,10 +77,33 @@ If we take a look at the data preparation notebook, there is a ```complex_augmen
 
 ```python
 def complex_augmenter(images, batches = 100):
-    # random example images
+
     NB_BATCHES = batches
     batches = [UnnormalizedBatch(images=images) for _ in range(NB_BATCHES)]
-    …
+    
+    
+    #...
+        seq = iaa.Sequential(
+        [
+            # apply the following augmenters to most images
+            iaa.Fliplr(0.5), # horizontally flip 50% of all images
+            iaa.Flipud(0.2), # vertically flip 20% of all images
+            # crop images by -5% to 10% of their height/width
+            sometimes(iaa.CropAndPad(
+                percent=(-0.05, 0.1),
+                pad_mode=ia.ALL,
+                pad_cval=(0, 255)
+            )),
+            sometimes(iaa.Affine(
+                scale={"x": (0.8, 1.2), "y": (0.8, 1.2)}, # scale images to 80-120% of their size, individually per axis
+                translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)}, # translate by -20 to +20 percent (per axis)
+                rotate=(-45, 45), # rotate by -45 to +45 degrees
+                shear=(-16, 16), # shear by -16 to +16 degrees
+                order=[0, 1], # use nearest neighbour or bilinear interpolation (fast)
+                cval=(0, 255), # if mode is constant, use a cval between 0 and 255
+                mode=ia.ALL # use any of scikit-image's warping modes (see 2nd image from the top for examples)
+            )),
+    #...
 
 ```
 
@@ -119,7 +142,42 @@ Before we start to build our models, as we’re going to use Transfer Learning w
     training_image = get_image_uri(sess.boto_region_name, 'image-classification', repo_version="latest")
 ```
 
-In our example, we can see that the```configure_estimator()``` and the  ```configure_hyperparams()``` functions contain a set of parameters which affect the structure, shape, and training of a model. One way to choose these hyperparameters is to perform expensive resource operations such as grid searching, which effectively searches the entire space of the parameters to find the most optimal set of parameters. Alternatively, SageMaker Hyperparameter Tuning can automate this process, and find the most optimal set of parameters, using more cost-effective approaches. For more information on this, take a look at this (REF).
+In our example, we can see that the```configure_estimator()``` and the  ```configure_hyperparams()``` functions contain a set of parameters which affect the structure, shape, and training of a model. One way to choose these hyperparameters is to perform expensive resource operations such as grid searching, which effectively searches the entire space of the parameters to find the most optimal set of parameters. Alternatively, SageMaker Hyperparameter Tuning can automate this process, and find the most optimal set of parameters, using more cost-effective approaches. For more information on this, take a look at this [article](https://aws.amazon.com/blogs/aws/sagemaker-automatic-model-tuning/).
+
+```python
+def configure_estimator(bucket_name, sess, training_image):
+
+    s3_output_location = 's3://{}/output'.format(bucket_name)
+    ic = sagemaker.estimator.Estimator(training_image,
+                                             role, 
+                                             train_instance_count=4, 
+                                             train_instance_type='ml.p3.16xlarge',
+                                             train_volume_size = 50,
+                                             train_max_run = 360000,
+                                             input_mode= 'Pipe',
+                                             output_path=s3_output_location,
+                                             sagemaker_session=sess)
+    return ic
+    
+    
+    
+def configure_hyperparams(ic):
+    ic.set_hyperparameters(num_layers=18,
+                             use_pretrained_model=1,
+                             image_shape = "3,150,250",
+                             num_classes=2,
+                             mini_batch_size=32,
+                             epochs=100,
+                             learning_rate=0.001,
+                             top_k=1,
+                             num_training_samples=105434,
+                             precision_dtype='float32')
+    
+    return ic
+
+```
+
+
 
 Based on the parameters of the estimator, once training is initiated, SageMaker will automatically start the distributed model training process with the desired number of training compute instances. Once our training job has been completed, we now need to deploy the classifier to test how well it performed. SageMaker makes this such a simple process with only one line of code (model.deploy()), yet behind the scenes, SageMaker configures the necessary infrastructure and services to establish a scalable RESTFUL End point. At this point, model evaluation can be performed, which would be in the form of classification confusion matrices, AUC analysis, or residual plots. In the given example, the model development went through several iterations of the hyperparameters in order to achieve acceptable results.
 
@@ -132,7 +190,7 @@ In order to use SageMaker Operations in Kubernetes, we need to create a YAML fil
 
 We’re going to give an example here of the YAML file to perform the Car Damage Detection model training.
 
-```
+```yaml
 apiVersion: SageMaker.aws.amazon.com/v1
 kind: TrainingJob
 metadata:
@@ -250,9 +308,16 @@ def determine_if_needs_audit_or_filing(od, cdd, image_url, acceptable_thresh = 0
             print('Audit Required')
 ```
 
-We now have a function which can take an image URL, and use both models to determine whether the image contains a car, and if so, does the car contain damages! This code then could be used inside a AWS Lambda function, and called every time a new Insurance Claim is submitted, and the results appended to the claim case, for example.
+We now have a function which can take an image URL, and use both models to determine whether the image contains a car, and if so, does the car contain damages! So, finally we execute the following code and end up with an output as follows
+
+```python
+url  = 'https://image.shutterstock.com/z/stock-photo-isolate-side-of-the-car-the-color-of-braun-white-which-crashed-with-another-car-until-it-was-596238068.jpg'
+determine_if_needs_audit_or_filing(od, cdd, image_url = url)
+```
 
 ![Workflow](images/Sagemaker-Workflow-Example.png)
+
+However, this code doesn't have to reside within a notebook cell, this could be wrapped up and then used inside a AWS Lambda function, and called every time a new Insurance Claim is submitted, and the results appended to the claim case, for example.
 
 
 ## Summary
