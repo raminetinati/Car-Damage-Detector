@@ -270,7 +270,7 @@ In order to examine the logs of the training job, the following command can be e
 $ kubectl smlogs trainingjob car-damage-detector 
 ```
 
-Which will result in a console output similar to the following, whicb reflects the metrics being used to measure the performance of the model against the training and validation data.
+Which will result in a console output similar to the following, which reflects the metrics being used to measure the performance of the model against the training and validation data.
 
 ```ssh
 car-damage-detector-4b1a19444bd011eab0ef0e980407102b/algo-1-1581317035 2020-02-10 07:09:20.215 +0000 UTC [02/10/2020 07:09:19 INFO 140575449093952] Epoch[7] Batch [820]#011Speed: 204.183 samples/sec#011accuracy=1.000000
