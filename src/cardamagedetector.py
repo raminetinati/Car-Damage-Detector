@@ -45,8 +45,8 @@ class CarDamageDetector:
 		with open(local_path, 'rb') as f:
 			payload = f.read()
 			payload = bytearray(payload)
-		# raw_img = mpimg.imread(local_path)
-		# plt.imshow(raw_img)
+		raw_img = mpimg.imread(local_path)
+		plt.imshow(raw_img)
 		self.predictor .content_type = 'application/x-image'
 		result = json.loads(self.predictor.predict(payload))
 		# the result will output the probabilities for all classes
