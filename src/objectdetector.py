@@ -72,7 +72,7 @@ class ObjectDetector:
 		det_classes_and_score = {}
 		for det in dets:
 			(klass, score, x0, y0, x1, y1) = det
-			if score < thresh:
+			if (score < thresh):
 				continue
 			cls_id = int(klass)
 			if cls_id not in colors:
